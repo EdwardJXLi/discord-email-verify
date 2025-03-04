@@ -2,6 +2,8 @@
 
 This bot verifies new members joining your Discord server by sending them a verification code via email.
 
+> **🤖 Ethical AI Notice:** This project was by in large part generated with AI. 
+
 ## Features
 
 - Automatically sends a DM to new members with a verification button
