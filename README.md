@@ -75,6 +75,29 @@ EMAIL_COOLDOWN_SECONDS=180
    - `ADMIN_LOG_CHANNEL_ID`: The ID of the channel where verification logs will be sent
    - `EMAIL_COOLDOWN_SECONDS`: Cooldown (in seconds) inbetween emails for each user
 
+### Docker Installation
+
+1. **Clone the repository**
+
+```bash
+git clone https://github.com/EdwardJXLi/discord-email-verify
+cd discord-email-verify
+```
+
+2. **Create your .env file** with the same content as in the local installation
+
+3. **Build and run with Docker Compose**
+
+```bash
+docker-compose up -d
+```
+
+4. **Check logs**
+
+```bash
+docker-compose logs -f
+```
+
 ### Discord Bot Setup
 
 1. Create a new application in the [Discord Developer Portal](https://discord.com/developers/applications)

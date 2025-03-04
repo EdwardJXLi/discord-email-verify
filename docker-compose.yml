@@ -1,0 +1,6 @@
+services:
+  discord-email-verification:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
