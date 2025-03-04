@@ -25,8 +25,6 @@ verification_data = {}  # Format: {user_id: {"email": email, "code": code}}
 # Keep track of last email request time (for cooldown)
 last_email_request_time = {}  # Format: {user_id: timestamp}
 
-# Load environment variables
-
 # Discord bot token and email configuration
 TOKEN = os.getenv('DISCORD_TOKEN')
 
@@ -53,6 +51,63 @@ ADMIN_LOG_CHANNEL_ID = int(os.getenv('ADMIN_LOG_CHANNEL_ID'))
 
 # Cooldown time in seconds, defaults to 180 if not provided
 COOLDOWN_TIME = int(os.getenv('EMAIL_COOLDOWN_SECONDS', '180'))
+
+# Customizable bot text
+WELCOME_TITLE = os.getenv('WELCOME_TITLE', 'Welcome to the Server!')
+WELCOME_DESCRIPTION = os.getenv('WELCOME_DESCRIPTION', 'To gain access, please verify your email address.')
+WELCOME_FIELD_TITLE = os.getenv('WELCOME_FIELD_TITLE', 'How to verify:')
+WELCOME_FIELD_VALUE = os.getenv('WELCOME_FIELD_VALUE', 'Click the button below to start the verification process.')
+VERIFY_BUTTON_LABEL = os.getenv('VERIFY_BUTTON_LABEL', 'Verify Email')
+
+ALREADY_VERIFIED_TITLE = os.getenv('ALREADY_VERIFIED_TITLE', 'Already Verified')
+ALREADY_VERIFIED_DESCRIPTION = os.getenv('ALREADY_VERIFIED_DESCRIPTION', 'You already have the Verified role. No need to verify again!')
+
+COOLDOWN_TITLE = os.getenv('COOLDOWN_TITLE', 'Cooldown Active')
+COOLDOWN_DESCRIPTION = os.getenv('COOLDOWN_DESCRIPTION', 'You must wait {time_left} more seconds before requesting another email.')
+
+INVALID_DOMAIN_TITLE = os.getenv('INVALID_DOMAIN_TITLE', 'Invalid Email Domain')
+INVALID_DOMAIN_DESCRIPTION = os.getenv('INVALID_DOMAIN_DESCRIPTION', 'Sorry, but verification is restricted to the following email domains: {domains}')
+
+EMAIL_SENT_TITLE = os.getenv('EMAIL_SENT_TITLE', 'Verification Email Sent!')
+EMAIL_SENT_DESCRIPTION = os.getenv('EMAIL_SENT_DESCRIPTION', "We've sent a 6-digit verification code to {email}. Please check your inbox (and spam folder).")
+ENTER_CODE_BUTTON_LABEL = os.getenv('ENTER_CODE_BUTTON_LABEL', 'Enter Verification Code')
+
+EMAIL_ERROR_TITLE = os.getenv('EMAIL_ERROR_TITLE', 'Error')
+EMAIL_ERROR_DESCRIPTION = os.getenv('EMAIL_ERROR_DESCRIPTION', 'Failed to send verification email. Please try again or contact an admin.')
+
+NO_VERIFICATION_TITLE = os.getenv('NO_VERIFICATION_TITLE', 'Error')
+NO_VERIFICATION_DESCRIPTION = os.getenv('NO_VERIFICATION_DESCRIPTION', 'No verification in progress. Please start over.')
+
+SERVER_ERROR_TITLE = os.getenv('SERVER_ERROR_TITLE', 'Error')
+SERVER_ERROR_DESCRIPTION = os.getenv('SERVER_ERROR_DESCRIPTION', 'Could not find the target server. Please contact an admin.')
+
+MEMBER_ERROR_TITLE = os.getenv('MEMBER_ERROR_TITLE', 'Error')
+MEMBER_ERROR_DESCRIPTION = os.getenv('MEMBER_ERROR_DESCRIPTION', 'Could not find your membership. Please contact an admin.')
+
+PERMISSION_ERROR_TITLE = os.getenv('PERMISSION_ERROR_TITLE', 'Error')
+PERMISSION_ERROR_DESCRIPTION = os.getenv('PERMISSION_ERROR_DESCRIPTION', "I don't have permission to assign roles. Please contact an admin.")
+
+SUCCESS_TITLE = os.getenv('SUCCESS_TITLE', 'Verification Successful!')
+SUCCESS_DESCRIPTION = os.getenv('SUCCESS_DESCRIPTION', 'You have been verified and granted access to the server!')
+
+INVALID_CODE_TITLE = os.getenv('INVALID_CODE_TITLE', 'Invalid Code')
+INVALID_CODE_DESCRIPTION = os.getenv('INVALID_CODE_DESCRIPTION', 'The verification code you entered is incorrect. Please try again.')
+TRY_AGAIN_BUTTON_LABEL = os.getenv('TRY_AGAIN_BUTTON_LABEL', 'Try Again')
+
+# Email text
+EMAIL_SUBJECT = os.getenv('EMAIL_SUBJECT', 'Discord Server Verification Code')
+EMAIL_TEXT = os.getenv('EMAIL_TEXT', 'Your verification code is: {code}\n\nPlease enter this code in the Discord bot to complete verification.')
+EMAIL_HTML = os.getenv('EMAIL_HTML', '''
+<html>
+<body>
+    <p>You've requested to join the Discord server. Your verification code is:</p>
+    <div>{code}</div>
+    <p>Enter this code in the Discord bot to gain access to the server.</p>
+    <p>If you didn't request this verification, you can safely ignore this email.</p>
+    </div>
+</body>
+</html>
+''')
 
 @bot.event
 async def on_ready():
@@ -84,14 +139,18 @@ async def on_member_join(member):
     try:
         # Create an embed for a nicer looking message
         embed = discord.Embed(
-            title="Welcome to the Server!",
-            description="To gain access, please verify your email address.",
+            title=WELCOME_TITLE,
+            description=WELCOME_DESCRIPTION,
             color=discord.Color.blue()
         )
-        embed.add_field(name="How to verify:", value="Click the button below to start the verification process.")
+        embed.add_field(name=WELCOME_FIELD_TITLE, value=WELCOME_FIELD_VALUE)
         
         # Create a button for email verification
-        verify_button = discord.ui.Button(label="Verify Email", style=discord.ButtonStyle.primary, custom_id="verify_email")
+        verify_button = discord.ui.Button(
+            label=VERIFY_BUTTON_LABEL, 
+            style=discord.ButtonStyle.primary, 
+            custom_id="verify_email"
+        )
         
         # Create a view and add the button
         view = discord.ui.View()
@@ -135,8 +194,8 @@ class EmailModal(discord.ui.Modal):
                 verified_role = guild.get_role(VERIFIED_ROLE_ID)
                 if verified_role in member.roles:
                     embed = discord.Embed(
-                        title="Already Verified",
-                        description="You already have the Verified role. No need to verify again!",
+                        title=ALREADY_VERIFIED_TITLE,
+                        description=ALREADY_VERIFIED_DESCRIPTION,
                         color=discord.Color.red()
                     )
                     await interaction.followup.send(embed=embed, ephemeral=True)
@@ -149,8 +208,8 @@ class EmailModal(discord.ui.Modal):
             if elapsed < COOLDOWN_TIME:
                 time_left = int(COOLDOWN_TIME - elapsed)
                 embed = discord.Embed(
-                    title="Cooldown Active",
-                    description=f"You must wait {time_left} more seconds before requesting another email.",
+                    title=COOLDOWN_TITLE,
+                    description=COOLDOWN_DESCRIPTION.format(time_left=time_left),
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
@@ -163,9 +222,10 @@ class EmailModal(discord.ui.Modal):
         if RESTRICT_TO_DOMAINS and ALLOWED_EMAIL_DOMAINS:
             email_domain = email.split('@')[-1].lower()
             if email_domain not in [domain.lower().strip() for domain in ALLOWED_EMAIL_DOMAINS]:
+                domains = ', '.join(ALLOWED_EMAIL_DOMAINS)
                 embed = discord.Embed(
-                    title="Invalid Email Domain",
-                    description=f"Sorry, but verification is restricted to the following email domains: {', '.join(ALLOWED_EMAIL_DOMAINS)}",
+                    title=INVALID_DOMAIN_TITLE,
+                    description=INVALID_DOMAIN_DESCRIPTION.format(domains=domains),
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
@@ -189,14 +249,14 @@ class EmailModal(discord.ui.Modal):
         
         if success:
             embed = discord.Embed(
-                title="Verification Email Sent!",
-                description=f"We've sent a 6-digit verification code to {email}. Please check your inbox (and spam folder).",
+                title=EMAIL_SENT_TITLE,
+                description=EMAIL_SENT_DESCRIPTION.format(email=email),
                 color=discord.Color.green()
             )
             
             # Create a button to enter verification code
             verify_code_button = discord.ui.Button(
-                label="Enter Verification Code", 
+                label=ENTER_CODE_BUTTON_LABEL, 
                 style=discord.ButtonStyle.primary, 
                 custom_id="enter_code"
             )
@@ -211,8 +271,8 @@ class EmailModal(discord.ui.Modal):
                 await admin_log_channel.send(f"Verification email sent to {email} for user {interaction.user.mention} ({user_id})")
         else:
             embed = discord.Embed(
-                title="Error",
-                description="Failed to send verification email. Please try again or contact an admin.",
+                title=EMAIL_ERROR_TITLE,
+                description=EMAIL_ERROR_DESCRIPTION,
                 color=discord.Color.red()
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
@@ -236,8 +296,8 @@ class CodeVerificationModal(discord.ui.Modal):
         # Check if the user has a pending verification
         if user_id not in verification_data:
             embed = discord.Embed(
-                title="Error",
-                description="No verification in progress. Please start over.",
+                title=NO_VERIFICATION_TITLE,
+                description=NO_VERIFICATION_DESCRIPTION,
                 color=discord.Color.red()
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -249,8 +309,8 @@ class CodeVerificationModal(discord.ui.Modal):
             guild = bot.get_guild(TARGET_GUILD_ID)
             if not guild:
                 embed = discord.Embed(
-                    title="Error",
-                    description="Could not find the target server. Please contact an admin.",
+                    title=SERVER_ERROR_TITLE,
+                    description=SERVER_ERROR_DESCRIPTION,
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -259,17 +319,8 @@ class CodeVerificationModal(discord.ui.Modal):
             member = guild.get_member(user_id)
             if not member:
                 embed = discord.Embed(
-                    title="Error",
-                    description="Could not find your membership. Please contact an admin.",
-                    color=discord.Color.red()
-                )
-                await interaction.response.send_message(embed=embed, ephemeral=True)
-                return
-            
-            if not member:
-                embed = discord.Embed(
-                    title="Error",
-                    description="Could not find your membership. Please contact an admin.",
+                    title=MEMBER_ERROR_TITLE,
+                    description=MEMBER_ERROR_DESCRIPTION,
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -287,8 +338,8 @@ class CodeVerificationModal(discord.ui.Modal):
                 
                 # Send success message
                 embed = discord.Embed(
-                    title="Verification Successful!",
-                    description=f"You have been verified and granted access to the server!",
+                    title=SUCCESS_TITLE,
+                    description=SUCCESS_DESCRIPTION,
                     color=discord.Color.green()
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -303,29 +354,29 @@ class CodeVerificationModal(discord.ui.Modal):
                 
             except discord.Forbidden:
                 embed = discord.Embed(
-                    title="Error",
-                    description="I don't have permission to assign roles. Please contact an admin.",
+                    title=PERMISSION_ERROR_TITLE,
+                    description=PERMISSION_ERROR_DESCRIPTION,
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
             
             except Exception as e:
                 embed = discord.Embed(
-                    title="Error",
+                    title=SERVER_ERROR_TITLE,
                     description=f"An unexpected error occurred: {str(e)}",
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
             embed = discord.Embed(
-                title="Invalid Code",
-                description="The verification code you entered is incorrect. Please try again.",
+                title=INVALID_CODE_TITLE,
+                description=INVALID_CODE_DESCRIPTION,
                 color=discord.Color.red()
             )
             
             # Create a button to try again
             retry_button = discord.ui.Button(
-                label="Try Again", 
+                label=TRY_AGAIN_BUTTON_LABEL, 
                 style=discord.ButtonStyle.primary, 
                 custom_id="enter_code"
             )
@@ -354,25 +405,15 @@ def send_verification_email(email, code):
     try:
         # Create message container
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = "Discord Server Verification Code"
+        msg['Subject'] = EMAIL_SUBJECT
         msg['From'] = f"{EMAIL_FROM_NAME} <{EMAIL_FROM}>"
         msg['To'] = email
         
         # Create the plain-text version of the message
-        text = f"Your verification code is: {code}\n\nPlease enter this code in the Discord bot to complete verification."
+        text = EMAIL_TEXT.format(code=code)
         
         # Create the HTML version of the message
-        html = f"""
-        <html>
-        <body>
-            <p>You've requested to join the Discord server. Your verification code is:</p>
-            <div>{code}</div>
-            <p>Enter this code in the Discord bot to gain access to the server.</p>
-            <p>If you didn't request this verification, you can safely ignore this email.</p>
-            </div>
-        </body>
-        </html>
-        """
+        html = EMAIL_HTML.format(code=code)
         
         # Attach parts to the message
         msg.attach(MIMEText(text, 'plain'))
